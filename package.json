@@ -2,10 +2,21 @@
   "name": "hapi_edge",
   "version": "1.0.0",
   "description": "",
+  "repository": "https://github.com/vdj4y/hapi-plugin",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "async": "^2.0.1",
+    "bell": "^8.3.0",
+    "blipp": "^2.3.0",
+    "hapi": "^15.1.1",
+    "hapi-auth-cookie": "^6.1.1",
+    "hoek": "^4.1.0",
+    "inert": "^4.0.2",
+    "uuid": "^2.0.3"
+  }
 }
