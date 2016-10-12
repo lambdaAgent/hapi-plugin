@@ -1,10 +1,14 @@
 var Hapi = require("hapi");
 var Path = require("path");
+var fs = require("fs");
 const Inert = require('inert');
-const uuid = require("uuid")
+const uuid = require("uuid");
+var UserStore = require("./lib/userStore");
 var Async = require("async"),
     Bell = require("bell"),
     Blipp = require("blipp"),
+    Good = require("good"),
+    Vision = require("vision"),
     HapiAuthCookie = require("hapi-auth-cookie"),
     Hoek = require("hoek");
     // Api = require("./api"),
@@ -12,6 +16,12 @@ var Async = require("async"),
     // Controllers = require("./controllers"),
     // Models = require("./models"),
     // Routes = require("./routes");
+
+var Handlers = require("./lib/handlers");
+var CardStore = require("./lib/CardStore");
+CardStore.initialize();
+UserStore.initialize();
+
 var server = new Hapi.Server({
 	connections:{
 		routes:{
@@ -22,79 +32,76 @@ var server = new Hapi.Server({
 	}
 });
 
-var Cards = {};
+
 
 server.connection({port: 3000});
-server.register(Inert, () => {});
+server.register([Inert, Vision, 
+	// {
+	// 	register: Good,
+	// 	options: {
+	// 		opsInterval: 5000,
+	// 		reporters: [
+	// 			{
+	// 				reporter: require('good-file'),
+	// 				events: { ops: '*' },
+	// 				config: {
+	// 					path: "./logs",
+	// 					prefix: "hapi-process",
+	// 					rotate: "daily"
+	// 				}
+	// 			},
+	// 			{
+	// 				reporter: require("good-file"),
+	// 				events: { response: "*"},
+	// 				config: {
+	// 					path: "./logs",
+	// 					prefix: "hapi-requests",
+	// 					rotate:"daily"
+	// 				}
+	// 			},
+	// 			{
+	// 				reporter: require("good-file"),
+	// 				events: { response: "*"},
+	// 				config: {
+	// 					path: "./logs",
+	// 					prefix: "hapi-error",
+	// 					rotate:"daily"
+	// 				} 
+	// 			}
+	// 		]
+	// 	}
+	// }
+	]
+	, function(err){
+		if(err) throw err;
+	}
+);
+server.register(require("hapi-auth-cookie"), function(err){
+	if(err) console.log(err);
+	server.auth.strategy('default', 'cookie', {
+		password: "myPassword",
+		redirectTo: "./login",
+		isSecure: false
+	});
 
-server.ext("onRequest", (request, reply) => {
-	console.log("Request received: " + request.path)
+	server.auth.default("default");
+});
+
+server.views({
+	engines: {
+		html: require("handlebars")
+	},
+	path: "./templates"
+})
+
+server.ext("onPreResponse", (req, reply) => {
+	if(req.response.isBoom){
+		return reply.view('error', req.response);
+	}
 	reply.continue();
 });
 
-
-server.route({
-	path: "/",
-	method: "GET",
-	handler: {
-        file: 'templates/index.html'
-    }
-});
-
-server.route({
-	path: "/assets/{path*}",
-	method: "GET",
-	handler: {
-		"directory": {
-			"path": "./public",
-			// "Listing": false
-		}
-	}
-});
-
-server.route({
-	path: "/cards",
-	method: "GET",
-	handler(req, reply){
-		reply.file("templates/cards.html")
-	}
-});
-
-server.route({
-	path: "/cards/new",
-	method: ["GET", "POST"],
-	handler(req, reply){
-		if(req.method === "get"){
-			reply.file("templates/new.html")
-		} else {
-			var card = {
-				name: req.payload.name,
-				recipient_email: req.payload.recipient_email,
-				sender_name: req.payload.sender_name,
-				sender_email: req.payload.sender_email,
-				card_image: req.payload.card_image
-			};
-			saveCard(card);
-
-			console.log(Cards)
-			reply.redirect("/cards")
-		}
-	}
-});
-server.route({
-	path: "/cards/{id}",
-	method: "DELETE",
-	handler(req, reply){
-		delete Cards[req.params.id];
-	}
-});
-
-
-function saveCard(card){
-	var id = uuid.v1();
-	card.id = id;
-	Cards[id] = card;
-}
+server.route(require("./lib/routes"));
 
 
 server.start(() => {
