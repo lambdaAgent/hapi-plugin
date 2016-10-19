@@ -105,5 +105,5 @@ server.route(require("./lib/routes"));
 
 
 server.start(() => {
-	console.log("listening on" + server.info.uri)
+	console.log("listening on " + server.info.uri)
 });
